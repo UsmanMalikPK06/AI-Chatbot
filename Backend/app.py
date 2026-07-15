@@ -60,7 +60,7 @@ def chat():
             )
         else:
             messages = [
-                {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Roman Urdu aur English mix mein jawab do."}
+                {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Roman Urdu aur English mix mein jawab do. Jawab hamesha chota aur seedha rakho — sirf utni tafseel do jitni sawal ki zaroorat ho. Chhote sawal ka chota jawab do, lambi wضاحت sirf tab do jab user khud detail mange."}
             ] + history + [{"role": "user", "content": user_message}]
 
             completion = groq_client.chat.completions.create(
