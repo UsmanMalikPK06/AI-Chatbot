@@ -79,7 +79,7 @@ def chat():
             speech = groq_client.audio.speech.create(
                 model="canopylabs/orpheus-v1-english",
                 voice="hannah",
-                input=reply,
+                input=reply[:2000],
                 response_format="wav"
             )
             audio_bytes = speech.read()
