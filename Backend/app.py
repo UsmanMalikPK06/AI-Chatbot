@@ -9,6 +9,7 @@ from groq import Groq
 from datetime import datetime
 
 import base64
+import re
 
 app = Flask(__name__)
 CORS(app)
@@ -60,7 +61,10 @@ def chat():
             )
         else:
             messages = [
-                {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Roman Urdu aur English mix mein jawab do. Jawab hamesha chota aur seedha rakho — sirf utni tafseel do jitni sawal ki zaroorat ho. Chhote sawal ka chota jawab do, lambi wضاحت sirf tab do jab user khud detail mange."}
+                {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Jis language mein user baat kare, usi language mein jawab do — agar Roman Urdu"
+                " mein poocha jaye to Roman Urdu mein jawab do, agar English mein poocha jaye to English mein jawab do."
+                " Jawab ki length sawal ke mutabiq rakho — chote sawal ka chota jawab, agar user tafseel ya detail mange to poori detail do. Kabhi tables ya pipe symbols (|) use mat karo."
+                " Agar list dena zaroori ho to sirf simple bullet points use karo, har point '- ' (dash space) se shuru karo. Bold ke liye **lafz** wala tareeqa use karo. Formatting hamesha saaf aur neat rakho."}
             ] + history + [{"role": "user", "content": user_message}]
 
             completion = groq_client.chat.completions.create(
@@ -76,10 +80,13 @@ def chat():
     audio_base64 = None
     if want_voice:
         try:
+            clean_text = re.sub(r'[\*\|#_`~>]', '', reply)
+            clean_text = re.sub(r'\n+', '. ', clean_text)
+            clean_text = re.sub(r'-{2,}', '', clean_text)
             speech = groq_client.audio.speech.create(
                 model="canopylabs/orpheus-v1-english",
                 voice="hannah",
-                input=reply[:900],
+                input=clean_text[:900],
                 response_format="wav"
             )
             audio_bytes = speech.read()
