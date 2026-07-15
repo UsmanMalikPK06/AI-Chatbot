@@ -92,7 +92,7 @@ def chat():
 
         if want_voice and full_reply:
             try:
-                clean_text = re.sub(r'[\*\|#_`->]', '', full_reply)
+                clean_text = re.sub(r'[\*\|#_`\->]', '', full_reply)
                 clean_text = re.sub(r'\n+', '. ', clean_text)
                 clean_text = re.sub(r'-{2,}', '', clean_text)
                 speech = groq_client.audio.speech.create(
