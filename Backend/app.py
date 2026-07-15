@@ -46,6 +46,23 @@ def init_db():
 
 init_db()
 
+def save_message(chat_id, user_id, role, content):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM chats WHERE id = ?", (chat_id,))
+    exists = cursor.fetchone()
+    if not exists:
+        title = content[:40] if role == "user" else "New Chat"
+        cursor.execute(
+            "INSERT INTO chats (id, user_id, title, created_at) VALUES (?, ?, ?, ?)",
+            (chat_id, user_id, title, datetime.now().isoformat())
+        )
+    cursor.execute(
+        "INSERT INTO messages (chat_id, role, content, created_at) VALUES (?, ?, ?, ?)",
+        (chat_id, role, content, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
 DAILY_LIMIT = 100
 usage_tracker = {}
 
@@ -70,12 +87,17 @@ def chat():
     history = data.get("history", [])[-10:]
     image_data = data.get("image", None)
     want_voice = data.get("voice", False)
+    chat_id = data.get("chat_id")
+    user_id = data.get("user_id", chat_id)
 
     if not check_limit(user_ip):
         def limit_stream():
             yield f"data: {json.dumps({'type': 'chunk', 'content': 'Aaj ki limit khatam ho gayi hai. Kal try karein 🙏'})}\n\n"
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
         return Response(limit_stream(), mimetype="text/event-stream")
+
+    if chat_id and user_message:
+        save_message(chat_id, user_id, "user", user_message)
 
     def generate():
         full_reply = ""
@@ -97,10 +119,10 @@ def chat():
                 )
             else:
                 messages = [
-                    {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Jis language mein user baat kare, usi language mein jawab do - agar Roman Urdu"
-                    " mein pocha jaye to Roman Urdu mein jawab do. Jawab ki length usual mutabiq rakho - chota sawal, chota jawab, "
-                    "agar user tafseeli poocha jaye to poori detail. Kabhi tables ya pipe symbols {|} use mat karo. Agar list dena zaroori ho to sirf simple bullet"
-                    " points use karo, har point '- ' (dash space) se shuru karo. Bold ke liye **text** wala tareeqa use karo. Formatting hamesha saaf aur neat rakho."}
+                    {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Jis language mein user baat kare, usi language mein jawab do - agar Roman Urdu mein pocha jaye to"
+                    " Roman Urdu mein jawab do. Jawab ki length usual mutabiq rakho - chota sawal, chota jawab, agar user tafseeli poocha jaye to poori detail. Kabhi tables"
+                    " ya pipe symbols {|} use mat karo. Agar list dena zaroori ho to sirf simple bullet points use karo, har point '- ' (dash space) se shuru karo."
+                    " Bold ke liye **text** wala tareeqa use karo. Formatting hamesha saaf aur neat rakho."}
                 ] + history + [{"role": "user", "content": user_message}]
                 completion = groq_client.chat.completions.create(
                     model="openai/gpt-oss-120b",
@@ -118,6 +140,9 @@ def chat():
             print(e)
             full_reply = "Kuch masla ho gaya. Dobara try karo."
             yield f"data: {json.dumps({'type': 'chunk', 'content': full_reply})}\n\n"
+
+        if chat_id and full_reply:
+            save_message(chat_id, user_id, "assistant", full_reply)
 
         if want_voice and full_reply:
             try:
