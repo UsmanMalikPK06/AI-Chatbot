@@ -11,11 +11,40 @@ from datetime import datetime
 import base64
 import re
 import json
+import sqlite3
+import uuid
 
 app = Flask(__name__)
 CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+DB_PATH = "chat_data.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS chats (
+            id TEXT PRIMARY KEY,
+            user_id TEXT,
+            title TEXT,
+            created_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id TEXT,
+            role TEXT,
+            content TEXT,
+            created_at TEXT
+        )
+    ''')
+    conn.commit()
+    conn.close()
+    print("Database ready ✅")
+
+init_db()
 
 DAILY_LIMIT = 100
 usage_tracker = {}
