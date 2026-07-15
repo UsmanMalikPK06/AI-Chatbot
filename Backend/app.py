@@ -18,7 +18,7 @@ app = Flask(__name__)
 CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
-DB_PATH = "chat_data.db"
+DB_PATH = "/app/data/chat_data.db"
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)
