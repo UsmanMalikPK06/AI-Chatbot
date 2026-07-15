@@ -37,7 +37,7 @@ def chat():
     user_ip = request.remote_addr
     data = request.json
     user_message = data.get("message", "")
-    history = data.get("history", [])
+    history = data.get("history", [])[-10:]
     image_data = data.get("image", None)
     want_voice = data.get("voice", False)
 
