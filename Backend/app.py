@@ -63,6 +63,66 @@ def save_message(chat_id, user_id, role, content):
     )
     conn.commit()
     conn.close()
+
+    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme123")
+
+def check_admin(req):
+    pwd = req.headers.get("X-Admin-Password", "")
+    return pwd == ADMIN_PASSWORD
+
+@app.route("/admin/chats", methods=["GET"])
+def get_all_chats():
+    if not check_admin(request):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT chats.id, chats.user_id, chats.title, chats.created_at,
+               COUNT(messages.id) as message_count
+        FROM chats
+        LEFT JOIN messages ON chats.id = messages.chat_id
+        GROUP BY chats.id
+        ORDER BY chats.created_at DESC
+    ''')
+    rows = cursor.fetchall()
+    conn.close()
+
+    chats = []
+    for row in rows:
+        chats.append({
+            "id": row[0],
+            "user_id": row[1],
+            "title": row[2],
+            "created_at": row[3],
+            "message_count": row[4]
+        })
+    return jsonify({"chats": chats})
+
+@app.route("/admin/chat/<chat_id>", methods=["GET"])
+def get_chat_messages(chat_id):
+    if not check_admin(request):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT role, content, created_at FROM messages
+        WHERE chat_id = ?
+        ORDER BY created_at ASC
+    ''', (chat_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    messages = []
+    for row in rows:
+        messages.append({
+            "role": row[0],
+            "content": row[1],
+            "created_at": row[2]
+        })
+    return jsonify({"messages": messages})
+
 DAILY_LIMIT = 100
 usage_tracker = {}
 
