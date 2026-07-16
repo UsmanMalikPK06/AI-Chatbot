@@ -64,7 +64,7 @@ def save_message(chat_id, user_id, role, content):
     conn.commit()
     conn.close()
 
-    ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme123")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme123")
 
 def check_admin(req):
     pwd = req.headers.get("X-Admin-Password", "")
