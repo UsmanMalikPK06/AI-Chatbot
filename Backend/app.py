@@ -189,6 +189,41 @@ def google_login():
 
     return jsonify({"token": token, "user_id": user_id, "name": name, "email": email})
 
+@app.route("/user/chats", methods=["GET"])
+def get_user_chats():
+    user_id = request.args.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id zaroori hai"}), 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, title, created_at FROM chats
+        WHERE user_id = ?
+        ORDER BY created_at DESC
+    """, (user_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    chats = [{"id": r[0], "title": r[1], "created_at": r[2]} for r in rows]
+    return jsonify({"chats": chats})
+
+
+@app.route("/user/chat/<chat_id>", methods=["GET"])
+def get_user_chat_messages(chat_id):
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT role, content FROM messages
+        WHERE chat_id = ?
+        ORDER BY created_at ASC
+    """, (chat_id,))
+    rows = cursor.fetchall()
+    conn.close()
+
+    messages = [{"role": r[0], "content": r[1]} for r in rows]
+    return jsonify({"messages": messages})
+
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme123")
 
 def check_admin(req):
