@@ -13,11 +13,16 @@ import re
 import json
 import sqlite3
 import uuid
+import hashlib
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 
 app = Flask(__name__)
 CORS(app)
 
 groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+GOOGLE_CLIENT_ID = "331389023208-qplu0ond5tsc9m96l4fa84a951j7dar6.apps.googleusercontent.com"
+
 DB_PATH = "/app/data/chat_data.db"
 
 def init_db():
@@ -37,6 +42,23 @@ def init_db():
             chat_id TEXT,
             role TEXT,
             content TEXT,
+            created_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT UNIQUE,
+            password_hash TEXT,
+            name TEXT,
+            auth_provider TEXT,
+            created_at TEXT
+        )
+    ''')
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id TEXT,
             created_at TEXT
         )
     ''')
@@ -63,6 +85,109 @@ def save_message(chat_id, user_id, role, content):
     )
     conn.commit()
     conn.close()
+    
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def generate_token():
+    return str(uuid.uuid4())
+
+@app.route("/auth/signup", methods=["POST"])
+def signup():
+    data = request.json
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+    name = data.get("name", "")
+
+    if not email or not password:
+        return jsonify({"error": "Email aur password zaroori hain"}), 400
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
+    if cursor.fetchone():
+        conn.close()
+        return jsonify({"error": "Ye email pehle se registered hai"}), 400
+
+    user_id = str(uuid.uuid4())
+    cursor.execute(
+        "INSERT INTO users (id, email, password_hash, name, auth_provider, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (user_id, email, hash_password(password), name, "email", datetime.now().isoformat())
+    )
+
+    token = generate_token()
+    cursor.execute(
+        "INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)",
+        (token, user_id, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"token": token, "user_id": user_id, "name": name, "email": email})
+
+@app.route("/auth/login", methods=["POST"])
+def login():
+    data = request.json
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, password_hash, name FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if not row or row[1] != hash_password(password):
+        conn.close()
+        return jsonify({"error": "Email ya password ghalat hai"}), 401
+
+    user_id, _, name = row
+    token = generate_token()
+    cursor.execute(
+        "INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)",
+        (token, user_id, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"token": token, "user_id": user_id, "name": name, "email": email})
+
+@app.route("/auth/google", methods=["POST"])
+def google_login():
+    data = request.json
+    google_token = data.get("token", "")
+
+    try:
+        idinfo = id_token.verify_oauth2_token(
+            google_token, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+        email = idinfo["email"]
+        name = idinfo.get("name", "")
+    except Exception as e:
+        return jsonify({"error": "Google login fail ho gaya"}), 401
+
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, name FROM users WHERE email = ?", (email,))
+    row = cursor.fetchone()
+
+    if row:
+        user_id, name = row
+    else:
+        user_id = str(uuid.uuid4())
+        cursor.execute(
+            "INSERT INTO users (id, email, password_hash, name, auth_provider, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+            (user_id, email, "", name, "google", datetime.now().isoformat())
+        )
+
+    token = generate_token()
+    cursor.execute(
+        "INSERT INTO sessions (token, user_id, created_at) VALUES (?, ?, ?)",
+        (token, user_id, datetime.now().isoformat())
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"token": token, "user_id": user_id, "name": name, "email": email})
 
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "changeme123")
 

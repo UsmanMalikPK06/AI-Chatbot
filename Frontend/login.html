@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Login - AI Chatbot</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .box {
+      background: #1e1e1e;
+      padding: 30px;
+      border-radius: 12px;
+      width: 320px;
+      text-align: center;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #444;
+      background: #2a2a2a;
+      color: white;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 8px;
+      border-radius: 6px;
+      border: none;
+      background: #4a90e2;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    #error-msg {
+      color: #ff6b6b;
+      margin-top: 10px;
+      font-size: 14px;
+    }
+    .divider {
+      margin: 15px 0;
+      color: #777;
+    }
+    #toggle-link {
+      color: #4a90e2;
+      cursor: pointer;
+      margin-top: 12px;
+      display: inline-block;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="box">
+    <h2 id="form-title">Login</h2>
+
+    <div id="g_id_onload"
+         data-client_id="331389023208-qplu0ond5tsc9m96l4fa84a951j7dar6.apps.googleusercontent.com"
+         data-callback="handleGoogleLogin">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+
+    <div class="divider">— ya —</div>
+
+    <input type="text" id="name-field" placeholder="Naam" style="display:none;">
+    <input type="email" id="email-field" placeholder="Email">
+    <input type="password" id="password-field" placeholder="Password">
+    <button onclick="handleEmailAuth()">Login</button>
+
+    <div id="error-msg"></div>
+
+    <div id="toggle-link" onclick="toggleMode()">Naya account banayen? Signup karo</div>
+  </div>
+
+  <script>
+    const BACKEND_URL = "https://ai-chatbot-production-19c7.up.railway.app";
+    let isSignup = false;
+
+    function toggleMode() {
+      isSignup = !isSignup;
+      document.getElementById("form-title").innerText = isSignup ? "Signup" : "Login";
+      document.getElementById("name-field").style.display = isSignup ? "block" : "none";
+      document.getElementById("toggle-link").innerText = isSignup
+        ? "Pehle se account hai? Login karo"
+        : "Naya account banayen? Signup karo";
+      document.getElementById("error-msg").innerText = "";
+    }
+
+    async function handleEmailAuth() {
+      const email = document.getElementById("email-field").value.trim();
+      const password = document.getElementById("password-field").value;
+      const name = document.getElementById("name-field").value.trim();
+      const errorBox = document.getElementById("error-msg");
+      errorBox.innerText = "";
+
+      if (!email || !password) {
+        errorBox.innerText = "Email aur password zaroori hain";
+        return;
+      }
+
+      const endpoint = isSignup ? "/auth/signup" : "/auth/login";
+      try {
+        const res = await fetch(BACKEND_URL + endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, name })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          errorBox.innerText = data.error;
+          return;
+        }
+
+        saveLoginAndRedirect(data);
+      } catch (err) {
+        errorBox.innerText = "Kuch masla ho gaya, dobara try karo";
+      }
+    }
+
+    async function handleGoogleLogin(response) {
+      const errorBox = document.getElementById("error-msg");
+      try {
+        const res = await fetch(BACKEND_URL + "/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token: response.credential })
+        });
+        const data = await res.json();
+
+        if (data.error) {
+          errorBox.innerText = data.error;
+          return;
+        }
+
+        saveLoginAndRedirect(data);
+      } catch (err) {
+        errorBox.innerText = "Google login mein masla hua";
+      }
+    }
+
+    function saveLoginAndRedirect(data) {
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("user_id", data.user_id);
+      localStorage.setItem("user_name", data.name);
+      localStorage.setItem("user_email", data.email);
+      window.location.href = "chatbot.html";
+    }
+  </script>
+
+</body>
+</html>
