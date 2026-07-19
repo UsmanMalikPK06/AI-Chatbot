@@ -46,10 +46,10 @@ body.dark-mode input { background: #2a2a2a; color: white; border-color: #444; }
   </div>
   <div class="input-area">
     <input type="file" id="image-input" accept="image/*" style="display:none" onchange="handleImageUpload(event)" />
-    <button onclick="document.getElementById('image-input').click()">🖼️</button>
+    <button onclick="document.getElementById('image-input').click()">+</button>
     <input type="text" id="user-input" placeholder="Kuch likho..." onkeydown="if(event.key === 'Enter') sendMessage()" />
-    <button id="send-btn" onclick="sendMessage()">Bhejo</button>
-    <button id="mic-btn" onclick="startVoice()">🎤 Bolo</button>
+    <button id="send-btn" onclick="sendMessage()">►</button>
+    <button id="mic-btn" onclick="startVoice()">Speak🎙️</button>
     <button id="voice-toggle-btn" onclick="voiceOutputOn = !voiceOutputOn; this.textContent = voiceOutputOn ? '🔊 On' : '🔇 Off'">🔇 Off</button>
   </div>
 </div>
@@ -144,7 +144,7 @@ function handleImageUpload(event) {
     wrapper.className = "msg-wrapper";
     const div = document.createElement("div");
     div.className = "msg user-msg";
-    div.innerHTML = `<img src="${pendingImage}" class="image-preview" /><br>Tasveer bhej di, ab neeche likho ya seedha "Bhejo" dabao`;
+    div.innerHTML = `<img src="${pendingImage}" class="image-preview" /><br>Image is Ready , Write Something Related to it or Press "Enter" button`;
     wrapper.appendChild(div);
     chatBox.appendChild(wrapper);
     chatBox.scrollTop = chatBox.scrollHeight;
@@ -228,7 +228,7 @@ async function sendMessage() {
     }
   } catch (error) {
     loadingDiv.classList.remove("loading");
-    loadingDiv.textContent = "Kuch masla ho gaya. Dobara try karo.";
+    loadingDiv.textContent = "An Error, Please try Again .";
     console.error(error);
   }
 
