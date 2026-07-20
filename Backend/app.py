@@ -391,7 +391,21 @@ from twilio.twiml.messaging_response import MessagingResponse
 def whatsapp_webhook():
     incoming_msg = request.form.get('Body', '')
     resp = MessagingResponse()
-    resp.message("Test reply working!")
+    
+    try:
+        completion = groq_client.chat.completions.create(
+            model="openai/gpt-oss-120b",
+            messages=[
+                {"role": "system", "content": "Tum ek helpful Pakistani AI assistant ho. Jis language mein user baat kare, usi mein jawab do — agar Roman Urdu mein baat ho to Roman Urdu mein hi jawab do."},
+                {"role": "user", "content": incoming_msg}
+            ]
+        )
+        ai_reply = completion.choices[0].message.content
+    except Exception as e:
+        ai_reply = "Kuch masla ho gaya. Dobara try karo."
+        print("WhatsApp AI error:", e)
+    
+    resp.message(ai_reply)
     return str(resp)
 
 if __name__ == "__main__":
