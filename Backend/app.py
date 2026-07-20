@@ -385,5 +385,14 @@ def chat():
 
     return Response(generate(), mimetype="text/event-stream")
 
+from twilio.twiml.messaging_response import MessagingResponse
+
+@app.route('/whatsapp/webhook', methods=['POST'])
+def whatsapp_webhook():
+    incoming_msg = request.form.get('Body', '')
+    resp = MessagingResponse()
+    resp.message("Test reply working!")
+    return str(resp)
+
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
